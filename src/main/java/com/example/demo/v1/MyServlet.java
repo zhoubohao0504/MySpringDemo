@@ -2,6 +2,7 @@ package com.example.demo.v1;
 
 
 import com.example.demo.annotation.MyController;
+import com.example.demo.annotation.MyService;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -61,7 +62,29 @@ public class MyServlet  extends HttpServlet {
                     String beanName = toLowerCaseFirst(clazz.getSimpleName());
                     Object instance = clazz.newInstance();
                     ioc.put(beanName,instance);
+                }else if(clazz.isAnnotationPresent(MyService.class)){
+                    String beanName = clazz.getAnnotation(MyService.class).value();
+                    if("".equals(beanName.trim())){
+                        beanName = toLowerCaseFirst(clazz.getSimpleName());
+                    }
+
+                    //2、默认的类名首字母小写
+                    Object instance = clazz.newInstance();
+                    ioc.put(beanName, instance);
+
+                    //3、如果是接口
+                    //判断有多少个实现类，如果只有一个，默认就选择这个实现类
+                    //如果有多个，只能抛异常
+                    for (Class<?> i : clazz.getInterfaces()) {
+                        if(ioc.containsKey(i.getName())){
+                            throw new Exception("The " + i.getName() + " is exists!!");
+                        }
+                        ioc.put(i.getName(),instance);
+                    }
+                }else {
+                    continue;
                 }
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
