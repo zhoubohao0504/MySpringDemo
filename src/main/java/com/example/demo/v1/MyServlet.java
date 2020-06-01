@@ -1,8 +1,7 @@
 package com.example.demo.v1;
 
 
-import com.example.demo.annotation.MyController;
-import com.example.demo.annotation.MyService;
+import com.example.demo.annotation.*;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -12,6 +11,10 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 
@@ -23,14 +26,73 @@ public class MyServlet  extends HttpServlet {
     //IoC容器，key默认是类名首字母小写，value就是对应的实例对象
     private Map<String,Object> ioc = new HashMap<String,Object>();
 
+
+    private Map<String,Method> handlerMapping = new HashMap<String, Method>();
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doGet(req, resp);
+        this.doPost(req, resp);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
+
+        try {
+            doDispatch(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void doDispatch(HttpServletRequest req, HttpServletResponse resp) throws Exception  {
+
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        url = url.replaceAll(contextPath,"").replaceAll("/+","/");
+        if(!this.handlerMapping.containsKey(url)){
+            resp.getWriter().write("404 not found!");
+            return;
+        }
+        Map<String ,String[]> params = req.getParameterMap();
+        Method method = this.handlerMapping.get(url);
+
+
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Object [] parameterValues = new Object[parameterTypes.length];
+
+        for (int i = 0; i < parameterTypes.length; i++) {
+
+            Class<?> parameterType = parameterTypes[i];
+            if(parameterType ==HttpServletRequest.class){
+                parameterValues[i] = req;
+            }else if(parameterType ==HttpServletResponse.class){
+                parameterValues[i] =resp;
+            }else if (parameterType ==String.class){
+
+                Annotation[] [] pa = method.getParameterAnnotations();
+                for (int j = 0; j < pa.length; j++) {
+                    for (Annotation a : pa[i]) {
+
+                        if(a instanceof MyRequestParam){
+                            String paramName = ((MyRequestParam) a).value();
+
+                            if(!"".equals(paramName.trim())){
+                                String value = Arrays.toString(params.get(paramName))
+                                        .replaceAll("\\[|\\]","")
+                                        .replaceAll("\\s","");
+                                parameterValues[i] = value;
+                            }
+                        }
+                    }
+                    
+                }
+            }
+
+
+        }
+        String beanName = toLowerCaseFirst(method.getDeclaringClass().getSimpleName());
+        method.invoke(ioc.get(beanName),parameterValues);
+
     }
 
     @Override
@@ -41,14 +103,82 @@ public class MyServlet  extends HttpServlet {
         doScanner(contextConfig.getProperty("scanPackage"));
         //==============IoC部分==============
         //3、初始化IoC容器，将扫描到的相关的类实例化，保存到IcC容器中
-
         doInstance();
         //AOP，新生成的代理对象
 
         //==============DI部分==============
         //4、完成依赖注入
+        doAutowired();
         //==============MVC部分==============
         //5、初始化HandlerMapping
+        doInitHandlerMapping();
+    }
+
+    private void doInitHandlerMapping() {
+        if(ioc.isEmpty()){return;}
+
+        for (Map.Entry<String, Object> entry : ioc.entrySet()) {
+
+            Class<?> clazz = entry.getValue().getClass();
+
+            if(!clazz.isAnnotationPresent(MyController.class)){continue;}
+
+            String baseUrl = "";
+            //这里是拿到类上面配置的访问地址
+            if(clazz.isAnnotationPresent(MyRequestMapping.class)){
+                MyRequestMapping myRequestMapping = clazz.getAnnotation(MyRequestMapping.class);
+                baseUrl = myRequestMapping.value();
+            }
+
+
+            for (Method method : clazz.getMethods()) {
+
+                if(!method.isAnnotationPresent(MyRequestMapping.class)){continue;}
+
+                //这里是拿方法上面的配置的访问地址
+                MyRequestMapping myRequestMapping = method.getAnnotation(MyRequestMapping.class);
+                String url = ("/"+baseUrl + "/"+myRequestMapping.value()).replaceAll("/+","/");
+                //此时就完成了url和方法的匹配
+                handlerMapping.put(url,method);
+                System.out.println("Mapped :"+url+","+method);
+
+            }
+
+        }
+
+    }
+
+    private void doAutowired() {
+
+        if(ioc.isEmpty()){return;}
+        for (Map.Entry<String, Object> entry : ioc.entrySet()) {
+            //获取该类所有的属性 包含private public protected default
+            for (Field field : entry.getValue().getClass().getDeclaredFields()) {
+                //只包含有自定义注解上的属性
+                if(!field.isAnnotationPresent(MyAutowired.class)){continue;}
+
+                String beanName = field.getAnnotation(MyAutowired.class).value().trim();
+                //如果当前属性 取得名字为""
+                //则取你这个属性的类型的名字
+                if("".equals(beanName)){
+                    beanName = field.getType().getName();
+                }
+
+                //暴力访问
+                //可以将初始话在ioc容器里面的的值赋予该属性
+                field.setAccessible(true);
+
+                try {
+                    //此时就完成了自动注入
+                    field.set(entry.getValue(),ioc.get(beanName));
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+        }
+
     }
 
     private void doInstance() {
@@ -98,6 +228,7 @@ public class MyServlet  extends HttpServlet {
         return String.valueOf(chars);
     }
 
+
     private void doScanner(String scanPackage) {
         //获取设置的需要进行扫描的包的路径
         URL url = this.getClass().getClassLoader().getResource("/" + scanPackage.replaceAll("\\.","/"));
@@ -113,6 +244,7 @@ public class MyServlet  extends HttpServlet {
                 //全类名 = 包名.类名
                 String className = (scanPackage + "." + file.getName().replace(".class", ""));
                 //Class.forName(className);
+                //将扫描到文件保存起来
                 classNames.add(className);
             }
         }
@@ -141,9 +273,5 @@ public class MyServlet  extends HttpServlet {
     }
 
 
-    public static void main(String[] args) {
-        char[] chars = "simpleName".toCharArray();
-        chars[0]+=32;
-        System.out.printf( String.valueOf(chars));
-    }
+
 }
