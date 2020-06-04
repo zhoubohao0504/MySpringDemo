@@ -1,8 +1,7 @@
-package com.example.demo.v1;
+package com.example.demo.spring.framework.webmvc.servlet;
 
 
 import com.example.demo.annotation.*;
-import com.example.demo.spring.framework.context.MyApplicationContext;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -14,14 +13,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 
-public class MyServlet  extends HttpServlet {
-
-    private MyApplicationContext myApplicationContext;
+public class MyServlet extends HttpServlet {
 
     private Properties contextConfig = new Properties();
     private List<String> classNames = new ArrayList<String>();
@@ -101,9 +97,7 @@ public class MyServlet  extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
         //1、加载配置文件
-
-        myApplicationContext = new MyApplicationContext(config.getInitParameter("contextConfigLocation"));
-        doLoadConfig();
+        doLoadConfig(config.getInitParameter("contextConfigLocation"));
         //2、扫描相关的类
         doScanner(contextConfig.getProperty("scanPackage"));
         //==============IoC部分==============
@@ -233,9 +227,10 @@ public class MyServlet  extends HttpServlet {
         return String.valueOf(chars);
     }
 
+
     private void doScanner(String scanPackage) {
         //获取设置的需要进行扫描的包的路径
-       /* URL url = this.getClass().getClassLoader().getResource("/" + scanPackage.replaceAll("\\.","/"));
+        URL url = this.getClass().getClassLoader().getResource("/" + scanPackage.replaceAll("\\.","/"));
         //将获取到的路径转换为文件形式
         File classPath = new File(url.getFile());
         for (File file : classPath.listFiles()) {
@@ -252,9 +247,8 @@ public class MyServlet  extends HttpServlet {
                 classNames.add(className);
             }
         }
-*/
-    }
 
+    }
 
 
     private void doLoadConfig(String contextConfigLocation) {
