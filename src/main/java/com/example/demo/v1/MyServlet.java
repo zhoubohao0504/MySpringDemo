@@ -103,7 +103,7 @@ public class MyServlet  extends HttpServlet {
         //1、加载配置文件
 
         myApplicationContext = new MyApplicationContext(config.getInitParameter("contextConfigLocation"));
-        doLoadConfig();
+        doLoadConfig("");
         //2、扫描相关的类
         doScanner(contextConfig.getProperty("scanPackage"));
         //==============IoC部分==============

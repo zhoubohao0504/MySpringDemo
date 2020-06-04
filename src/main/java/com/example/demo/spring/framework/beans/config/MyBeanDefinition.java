@@ -8,6 +8,11 @@ public class MyBeanDefinition {
     public MyBeanDefinition() {
     }
 
+    public MyBeanDefinition(String factoryBeanName, String beanClassName) {
+        this.factoryBeanName = factoryBeanName;
+        this.beanClassName = beanClassName;
+    }
+
     public String getFactoryBeanName() {
         return factoryBeanName;
     }
