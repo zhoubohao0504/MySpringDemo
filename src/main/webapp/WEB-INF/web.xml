@@ -7,7 +7,7 @@
 	<display-name>My Application</display-name>
 	<servlet>
 		<servlet-name>mymvc</servlet-name>
-		<servlet-class>com.example.demo.v1.MyServlet</servlet-class>
+		<servlet-class>com.example.demo.spring.framework.webmvc.servlet.MyServlet</servlet-class>
 		<init-param>
 			<param-name>contextConfigLocation</param-name>
 			<param-value>classpath:application.properties</param-value>

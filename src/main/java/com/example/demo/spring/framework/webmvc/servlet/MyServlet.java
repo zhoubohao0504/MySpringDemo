@@ -2,6 +2,7 @@ package com.example.demo.spring.framework.webmvc.servlet;
 
 
 import com.example.demo.annotation.*;
+import com.example.demo.spring.framework.context.MyApplicationContext;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -19,6 +20,8 @@ import java.util.*;
 
 public class MyServlet extends HttpServlet {
 
+
+    private MyApplicationContext myApplicationContext;
     private Properties contextConfig = new Properties();
     private List<String> classNames = new ArrayList<String>();
 
@@ -97,8 +100,8 @@ public class MyServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
         //1、加载配置文件
-        doLoadConfig(config.getInitParameter("contextConfigLocation"));
-        //2、扫描相关的类
+        myApplicationContext= new MyApplicationContext(config.getInitParameter("contextConfigLocation"));
+        /*//2、扫描相关的类
         doScanner(contextConfig.getProperty("scanPackage"));
         //==============IoC部分==============
         //3、初始化IoC容器，将扫描到的相关的类实例化，保存到IcC容器中
@@ -110,7 +113,7 @@ public class MyServlet extends HttpServlet {
         doAutowired();
         //==============MVC部分==============
         //5、初始化HandlerMapping
-        doInitHandlerMapping();
+        doInitHandlerMapping();*/
     }
 
     private void doInitHandlerMapping() {

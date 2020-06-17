@@ -1,4 +1,4 @@
-package com.example.demo.spring.framework.support;
+package com.example.demo.spring.framework.beans.support;
 
 import com.example.demo.spring.framework.beans.config.MyBeanDefinition;
 
@@ -16,6 +16,11 @@ public class MyBeanDefinitionReader {
     private List<String> regitryBeanClasses = new ArrayList<String>();
     private Properties contextConfig = new Properties();
 
+    /**
+     * 通过构造函数将配置文件路径传入
+     * 并扫描配置文件中配置的文件路径添加到一个list集合里面
+     * @param contextConfigLocation 配置文件路径
+     */
     public MyBeanDefinitionReader(String... contextConfigLocation) {
         //读取配置文件内容
         doLoadConfig(contextConfigLocation[0]);
@@ -48,7 +53,7 @@ public class MyBeanDefinitionReader {
     private void doLoadConfig(String contextConfigLocation) {
 
         //读取wen.xml里面配置的init-param 从而拿到指定的文件路径
-        InputStream is = this.getClass().getClassLoader().getResourceAsStream(contextConfigLocation.replaceAll("classPath:", ""));
+        InputStream is = this.getClass().getClassLoader().getResourceAsStream(contextConfigLocation.replaceAll("classpath:", ""));
         try {
             //将获取到的文件流通过键值对的形式放入到Properties里面
             contextConfig.load(is);
@@ -72,6 +77,7 @@ public class MyBeanDefinitionReader {
             try {
                 //1.正常的
                 Class<?> clazz = Class.forName(regitryBeanClass);
+                if(clazz.isInterface()){continue;}
                 list.add(new MyBeanDefinition(toLowerFirstCase(clazz.getSimpleName()),clazz.getName()));
                 //2.接口注入
                 for (Class<?> anInterface : clazz.getInterfaces()) {
